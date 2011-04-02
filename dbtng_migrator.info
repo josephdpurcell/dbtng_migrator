@@ -1,0 +1,6 @@
+name = DBTNG Migrator
+description = "Migrate Drupal installations between databases."
+core = 7.x
+package = DBTNG
+configure = admin/structure/dbtng-migrator
+
