@@ -61,7 +61,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
     $count = 0;
     $limit = 500;
 
-    while ($count < $total) {
+    while ($count < $total[0]) {
       db_set_active($origin);
       $rows = db_select($table, 't')
                 ->fields('t', array_keys($schema['fields']))
