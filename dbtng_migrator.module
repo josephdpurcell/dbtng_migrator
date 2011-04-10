@@ -98,6 +98,7 @@ function dbtng_migrator_settings_submit($form, $form_state) {
   $batch = array(
     'title' => t("Replicating Database"),
     'operations' => array(
+      array('dbtng_migrator_batch_initialise_destination', array($form_state['values']['migrate_destination'])),
       array('dbtng_migrator_batch_install_schema', array($form_state['values']['migrate_origin'], $form_state['values']['migrate_destination'])),
       array('dbtng_migrator_batch_migrate_table', array($form_state['values']['migrate_origin'], $form_state['values']['migrate_destination'])),
     ),

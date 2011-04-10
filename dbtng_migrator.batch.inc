@@ -1,6 +1,23 @@
 <?php
 
 /**
+ * Initialize the database with any environmentals needed.
+ */
+function dbtng_migrator_batch_initialise_destination($destination) {
+  include_once DRUPAL_ROOT . '/includes/install.inc';
+  // The Drupal database driver installer specifically uses the
+  // default target and key from the $databases global variable.
+  // Therefore, we'll need to rename the default connection and
+  // destination keys so we can initialize the destination
+  // database.
+  Database::renameConnection('default', 'dbtngmTmp');
+  Database::renameConnection($destination, 'default');
+  db_run_tasks(Database::getConnection()->driver());
+  Database::renameConnection('default', $destination);
+  Database::renameConnection('dbtngmTmp', 'default');
+}
+
+/**
  * Install database schema into destination database.
  */
 function dbtng_migrator_batch_install_schema($origin, $destination) {
