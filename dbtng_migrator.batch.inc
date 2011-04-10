@@ -32,10 +32,10 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
     foreach ($schema as $name => $table) {
       db_create_table($name, $table);
       if (db_table_exists($name)) {
-        drupal_set_message("$name was successfully created.");
+        drupal_set_message(t("@table was successfully created.", array('@table' => $name)));
       }
       else {
-        drupal_set_message("$name could not be created.", 'error');
+        drupal_set_message(t("@table could not be created.", array('@table' => $name)), 'error');
       }
     }
     db_set_active($origin);
@@ -85,7 +85,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
 
   try {
 
-    $context['message'] = t("Processing !table successful", array('!table' => $table));
+    $context['message'] = t("Processing @table successful", array('@table' => $table));
 
     // Fix this to make work with non-SQL databases.
     $total = db_query("SELECT COUNT(*) FROM {$table}")->fetchCol();
@@ -116,7 +116,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
   }
   catch(Exception $e) {
     drupal_set_message($e->getMessage(), 'error');
-    $context['message'] = t("Processing !table failed.", array('!table' => $table));
+    $context['message'] = t("Processing @table failed.", array('@table' => $table));
   }
   $context['results'][] = $table;
 

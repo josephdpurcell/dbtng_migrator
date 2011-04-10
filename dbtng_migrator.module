@@ -1,6 +1,19 @@
 <?php
 
 /**
+ * Implementation of hook_permission().
+ */
+function dbtng_migrator_permission() {
+  return array(
+    'use dbtng migrator' => array(
+      'title' => t('Use DBTNG Migrator'), 
+      'description' => t('Allows users to migrate data from one database connection to another.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function dbtng_migrator_menu() {
@@ -11,7 +24,7 @@ function dbtng_migrator_menu() {
     'description' => 'Use the power of DBTNG to migrate a database.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('dbtng_migrator_settings'),
-    'access arguments' => array('access administration pages'),
+    'access arguments' => array('use dbtng migrator'),
     'type' => MENU_NORMAL_ITEM,
   );
   
@@ -28,7 +41,9 @@ function dbtng_migrator_settings($form, &$form_state) {
   foreach (array_keys($databases) as $key) {
     $connection_info = Database::getConnectionInfo($key);
     $info = $connection_info['default'];
-    $rows[] = array($key, $info['driver'], $info['database']);
+
+    // Make the information display safe.
+    $rows[] = array(check_plain($key), check_plain($info['driver']), check_plain($info['database']));
     $options[$key] = $key;
   }
   $headers = array('Key', 'Driver', 'Database');
