@@ -7,10 +7,24 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
   db_set_active($origin);
   $modules = module_list(TRUE);
 
-  db_set_active($destination); 
   foreach ($modules as $module) {
-    drupal_install_schema($module);
+    $schema = drupal_get_schema_unprocessed($module);
+    _drupal_schema_initialize($schema, $module, FALSE);
+
+    db_set_active($destination);
+    foreach ($schema as $name => $table) {
+      db_create_table($name, $table);
+      if (db_table_exists($name)) {
+        drupal_set_message("$name was successfully created.");
+      }
+      else {
+        drupal_set_message("$name could not be created.", 'error');
+      }
+    }
+    db_set_active($origin);
   }
+
+  // Set connection back to the default Drupal connection.
   db_set_active('default');
 }
 
