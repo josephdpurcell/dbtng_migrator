@@ -28,17 +28,22 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
     $schema = drupal_get_schema_unprocessed($module);
     _drupal_schema_initialize($schema, $module, FALSE);
 
-    db_set_active($destination);
     foreach ($schema as $name => $table) {
+      db_set_active($destination);
       db_create_table($name, $table);
-      if (db_table_exists($name)) {
+      $success = db_table_exists($name);
+
+      // So that the locale module doesn't try query the new and
+      // incomplete database during t(), we have to revert back to
+      // the default database momentarily.
+      db_set_active('default');
+      if ($success) {
         drupal_set_message(t("@table was successfully created.", array('@table' => $name)));
       }
       else {
         drupal_set_message(t("@table could not be created.", array('@table' => $name)), 'error');
       }
     }
-    db_set_active($origin);
   }
 
   // Set connection back to the default Drupal connection.
@@ -84,8 +89,11 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
 
 
   try {
-
+    // we have to revert to the default database to process a t() function call.
+    // Even though its likely $origin is the default database, we can't assume that.
+    db_set_active('default');
     $context['message'] = t("Processing @table successful", array('@table' => $table));
+    db_set_active($origin);
 
     // Fix this to make work with non-SQL databases.
     $total = db_query("SELECT COUNT(*) FROM {$table}")->fetchCol();
@@ -115,6 +123,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
     }
   }
   catch(Exception $e) {
+    db_set_active('default'); 
     drupal_set_message($e->getMessage(), 'error');
     $context['message'] = t("Processing @table failed.", array('@table' => $table));
   }
