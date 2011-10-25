@@ -96,7 +96,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
     db_set_active($origin);
 
     // Fix this to make work with non-SQL databases.
-    $total = db_query("SELECT COUNT(*) FROM {$table}")->fetchCol();
+    $total = db_query('SELECT COUNT(*) FROM {' . $table . '}')->fetchCol();
     $count = 0;
     $limit = 500;
 
