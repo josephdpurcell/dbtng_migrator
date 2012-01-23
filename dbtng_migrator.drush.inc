@@ -40,6 +40,9 @@ function drush_dbtng_migrator_dbtng_replicate_validate($origin, $destination) {
     'migrate_origin' => $origin,
     'migrate_destination' => $destination,
   );
+
+  require_once dirname(__FILE__) . '/dbtng_migrator.admin.inc';
+
   drupal_form_submit('dbtng_migrator_settings', $form_state);
   if (form_set_error()) {
     return FALSE;
