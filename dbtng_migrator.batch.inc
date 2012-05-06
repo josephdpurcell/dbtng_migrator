@@ -27,8 +27,19 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
   foreach ($modules as $module) {
     $schema = drupal_get_schema_unprocessed($module);
     _drupal_schema_initialize($schema, $module, FALSE);
+    // Next, prepare to call hook_schema_alter on our unprocessed schema.
+    // There are some modules that add fields to tables owned by other modules;
+    // for example, the uuid module (which is used by the features module) adds
+    // a uuid field to several tables, including the node table. Adding these in will
+    // insure that our destination table has the same set of fields as the source
+    // table.  However, it may also happen that hook_schema_alter might add new
+    // tables to the schema; we do not want to create these tables, because they
+    // are not always unique. Skipping them works.
+    $original_schema_table_list = array_keys($schema);
+    drupal_alter('schema', $schema);
 
-    foreach ($schema as $name => $table) {
+    foreach ($original_schema_table_list as $name) {
+      $table = $schema[$name];
       db_set_active($destination);
       db_create_table($name, $table);
       $success = db_table_exists($name);
@@ -66,7 +77,7 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
       if (!is_array($schema)) {
         continue;
       }
-      foreach ($schema as $table => $info) { 
+      foreach ($schema as $table => $info) {
         $tables[] = $table;
       }
     }
@@ -116,8 +127,8 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
       db_set_active($destination);
       $insert = db_insert($table)->fields(array_keys($schema['fields']));
       foreach ($rows as $row) {
-         $insert->values((array) $row); 
-      } 
+         $insert->values((array) $row);
+      }
       $insert->execute();
       $count += $limit;
     }
