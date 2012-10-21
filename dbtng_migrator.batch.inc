@@ -29,6 +29,7 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
   $modules = module_list(TRUE);
 
   foreach ($modules as $module) {
+    db_set_active($origin);
     $schema = drupal_get_schema_unprocessed($module);
     _drupal_schema_initialize($schema, $module, FALSE);
     // Next, prepare to call hook_schema_alter on our unprocessed schema.
