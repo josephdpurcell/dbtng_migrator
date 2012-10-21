@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Batch processing functions.
+ */
 
 /**
  * Initialize the database with any environmentals needed.
@@ -30,11 +34,11 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
     // Next, prepare to call hook_schema_alter on our unprocessed schema.
     // There are some modules that add fields to tables owned by other modules;
     // for example, the uuid module (which is used by the features module) adds
-    // a uuid field to several tables, including the node table. Adding these in will
-    // insure that our destination table has the same set of fields as the source
-    // table.  However, it may also happen that hook_schema_alter might add new
-    // tables to the schema; we do not want to create these tables, because they
-    // are not always unique. Skipping them works.
+    // a uuid field to several tables, including the node table. Adding these
+    // in will insure that our destination table has the same set of fields as
+    // the source table.  However, it may also happen that hook_schema_alter
+    // might add new tables to the schema; we do not want to create these
+    // tables, because they are not always unique. Skipping them works.
     $original_schema_table_list = array_keys($schema);
     drupal_alter('schema', $schema);
 
@@ -100,8 +104,9 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
 
 
   try {
-    // we have to revert to the default database to process a t() function call.
-    // Even though its likely $origin is the default database, we can't assume that.
+    // We have to revert to the default database to process a t() function call.
+    // Even though its likely $origin is the default database,
+    // we can't assume it.
     db_set_active('default');
     $context['message'] = t("Processing @table successful", array('@table' => $table));
     db_set_active($origin);
@@ -127,14 +132,14 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
       db_set_active($destination);
       $insert = db_insert($table)->fields(array_keys($schema['fields']));
       foreach ($rows as $row) {
-         $insert->values((array) $row);
+        $insert->values((array) $row);
       }
       $insert->execute();
       $count += $limit;
     }
   }
   catch(Exception $e) {
-    db_set_active('default'); 
+    db_set_active('default');
     drupal_set_message($e->getMessage(), 'error');
     $context['message'] = t("Processing @table failed.", array('@table' => $table));
   }
