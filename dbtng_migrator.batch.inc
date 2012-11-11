@@ -9,6 +9,7 @@
  */
 function dbtng_migrator_batch_initialise_destination($destination) {
   include_once DRUPAL_ROOT . '/includes/install.inc';
+
   // The Drupal database driver installer specifically uses the
   // default target and key from the $databases global variable.
   // Therefore, we'll need to rename the default connection and
@@ -25,6 +26,11 @@ function dbtng_migrator_batch_initialise_destination($destination) {
  * Install database schema into destination database.
  */
 function dbtng_migrator_batch_install_schema($origin, $destination) {
+  include_once DRUPAL_ROOT . '/includes/install.inc';
+
+  // Load install files to expose hook_schema_alter hooks.
+  drupal_load_updates();
+
   db_set_active($origin);
   $modules = module_list(TRUE);
 
