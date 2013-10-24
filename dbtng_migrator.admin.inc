@@ -5,34 +5,15 @@
  * in dbtng_migrator_menu().
  */
 function dbtng_migrator_check_form($form, &$form_state) {
+  $form = dbtng_migrator_settings($form, $form_state);
   $form['description']['#markup'] = t('Below are the database connections defined in Drupal. You can use this interface to check the schema against a database to another assuming it is a Drupal database.');
-  global $databases;
-  foreach (array_keys($databases) as $key) {
-    $connection_info = Database::getConnectionInfo($key);
-    $info = $connection_info['default'];
 
-    // Make the information display safe.
-    $rows[] = array(check_plain($key), check_plain($info['driver']), check_plain($info['database']));
-    $options[$key] = $key;
-  }
-  $headers = array('Key', 'Driver', 'Database');
-  $form['databases']['#markup'] = theme('table', array('header' => $headers, 'rows' => $rows));
-  $form['check_origin'] = array(
-    '#title' => 'Origin Database',
-    '#type' => 'select',
-    '#options' => $options,
-    '#description' => t('The database the schema will be loaded from'),
-  );
-  $form['check_destination'] = array(
-    '#title' => 'Destination Database',
-    '#type' => 'select',
-    '#options' => $options,
-    '#description' => t('The database the schema will be checked against.'),
-  );
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Check'),
+    '#access' => $form['migrate_submit']['#access'],
   );
+  unset($form['migrate_submit']);
   return $form;
 }
 
@@ -110,6 +91,37 @@ function dbtng_migrator_settings($form, &$form_state) {
     $rows[] = array(check_plain($key), check_plain($info['driver']), check_plain($info['database']));
     $options[$key] = $key;
   }
+
+  if (count($options) < 2) {
+    drupal_set_message(t('You must specify more than one database connection in the settings.php file.'), 'error');
+  }
+
+  $form['how_to'] = array(
+    '#title' => 'Instructions',
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['how_to']['details'] = array(
+    '#markup' => '<p>' . t('To migrate this Drupal install to another database you\'ll 
+                    need to add the database connection creditials to your settings.php file. Below is an example:') . '</p>',
+  );
+  $form['how_to']['example']['#markup'] = '<pre>
+  &lt;?php
+    // Settings.php contents above....
+
+    // You\'re new database to migrate to. This will appear as "example" in the Migrator admin UI.
+    $databases[\'example\'][\'default\'] = array(
+      \'driver\' => \'mysql\',
+      \'database\' => \'databasename\',
+      \'username\' => \'username\',
+      \'password\' => \'password\',
+      \'host\' => \'localhost\',
+      \'prefix\' => \'\',
+    );
+  ?&gt;
+</pre>';
+
   $headers = array('Key', 'Driver', 'Database');
   $form['databases']['#markup'] = theme('table', array('header' => $headers, 'rows' => $rows));
   $form['migrate_origin'] = array(
@@ -117,16 +129,20 @@ function dbtng_migrator_settings($form, &$form_state) {
     '#type' => 'select',
     '#options' => $options,
     '#description' => t('The database the data will be replicated from.'),
+    '#disabled' => count($options) < 2,
   );
   $form['migrate_destination'] = array(
     '#title' => 'Destination Database',
     '#type' => 'select',
     '#options' => $options,
     '#description' => t('The database the origin data will be replicated too.'),
+    '#access' => count($options) > 1,
+    '#default_value' => $key,
   );
   $form['migrate_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Migrate'),
+    '#access' => count($options) > 1,
   );
   return $form;
 }
