@@ -78,6 +78,10 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
 function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
   if (empty($context['results'])) {
     db_set_active($origin);
+    include_once DRUPAL_ROOT . '/includes/install.inc';
+
+    // Load install files to expose hook_schema_alter hooks.
+    drupal_load_updates();
     $modules = module_list(TRUE);
     $tables  = array();
     foreach ($modules as $module) {

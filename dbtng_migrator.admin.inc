@@ -43,6 +43,12 @@ function dbtng_migrator_check_form_validate($form, &$form_state) {
 
   // Connect to the origin and generate a list of tables in the database.
   db_set_active($origin);
+
+  include_once DRUPAL_ROOT . '/includes/install.inc';
+
+  // Load install files to expose hook_schema_alter hooks.
+  drupal_load_updates();
+
   $modules = module_list(TRUE);
   foreach ($modules as $module) {
     db_set_active($origin);
@@ -196,6 +202,11 @@ function dbtng_migrator_settings_validate($form, $form_state) {
 
   // Connect to the origin and generate a list of tables in the database.
   db_set_active($origin);
+  include_once DRUPAL_ROOT . '/includes/install.inc';
+
+  // Load install files to expose hook_schema_alter hooks.
+  drupal_load_updates();
+
   $modules = module_list(TRUE);
   $tables  = array();
   foreach ($modules as $module) {
