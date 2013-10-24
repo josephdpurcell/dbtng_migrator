@@ -15,7 +15,7 @@ function dbtng_migrator_drush_command() {
     'examples' => array(
       'drush dbtng-replicate default pgsql' => 'Replicate the default database to a datase with the key named "pgsql" in $databases in settings.php',
     ),
-    'aliases' => array('replicate'),
+    'aliases' => array('replicate', 'dbtng-migrator', 'dbtng-migrate'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL, // No bootstrap at all.
   );
 
