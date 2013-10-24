@@ -19,9 +19,9 @@ function dbtng_migrator_permission() {
 function dbtng_migrator_menu() {
   $items = array();  
 
-  $items['admin/structure/dbtng/migrator'] = array(
+  $items['admin/structure/dbtng-migrator'] = array(
     'title' => 'Migrator',
-    'description' => 'Use the power of DBTNG to migrate a database.',
+    'description' => 'Use the power of "Database: The Next Generation (DBTNG)" to migrate a database.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('dbtng_migrator_settings'),
     'access arguments' => array('use dbtng migrator'),
@@ -29,12 +29,12 @@ function dbtng_migrator_menu() {
     'type' => MENU_NORMAL_ITEM,
   );
 
-  $items['admin/structure/dbtng/migrator/default'] = array(
+  $items['admin/structure/dbtng-migrator/default'] = array(
     'title' => 'Migrator',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
 
-  $items['admin/structure/dbtng/migrator/check'] = array(
+  $items['admin/structure/dbtng-migrator/check'] = array(
     'title' => 'Migrator database check',
     'description' => 'Check that the Drupal schema currently reflects the state of the database.',
     'page callback' => 'drupal_get_form',
