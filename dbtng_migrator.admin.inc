@@ -21,8 +21,25 @@ function dbtng_migrator_check_form($form, &$form_state) {
  * Validation callback for dbtng_migrator_check_form().
  */
 function dbtng_migrator_check_form_validate($form, &$form_state) {
-  $origin = $form_state['values']['check_origin'];
-  $dest   = $form_state['values']['check_destination'];
+  $origin = $form_state['values']['migrate_origin'];
+  $dest   = $form_state['values']['migrate_destination'];
+
+  // Test connectivity.
+  try {
+    $test_connection = "migrate_origin";
+    db_set_active($origin);
+    db_query('SELECT 1');
+    $test_connection = "migrate_destination";
+    db_set_active($dest);
+    db_query('SELECT 1');
+  }
+  catch (Exception $e) {
+    db_set_active($origin);
+    form_set_error($test_connection, t("Unable to connect to database: @message", array(
+      '@message' => $e->getMessage(),
+    )));
+    return;
+  }
 
   // Connect to the origin and generate a list of tables in the database.
   db_set_active($origin);
@@ -39,32 +56,50 @@ function dbtng_migrator_check_form_validate($form, &$form_state) {
 
     db_set_active($dest);
 
-    // Iterate over the schema and assert the origin's schema exists
-    // on the destination.
-    foreach ($schema as $table => $info) {
-      if (!db_table_exists($table)) {
-        form_set_error('check_destination', t('@table does not existing in @db_key', array('@table' => $table, '@db_key' => $dest)));
-        continue;
-      }
-      foreach ($info['fields']  as $name => $column) {
-        if (!db_field_exists($table, $name)) {
-          form_set_error('check_destination', t('@table does not contain field @column in @db_key', array('@table' => $table, '@column' => $name, '@db_key' => $dest)));
+    try {
+
+      // Iterate over the schema and assert the origin's schema exists
+      // on the destination.
+      foreach ($schema as $table => $info) {
+        if (!db_table_exists($table)) {
+          form_set_error('migrate_destination', t('@table does not existing in @db_key', array('@table' => $table, '@db_key' => $dest)));
+          continue;
         }
-      }
-      if (isset($info['indexes'])) {
-        foreach ($info['indexes'] as $name => $columns) {
-          if (!db_index_exists($table, $name)) {
-            form_set_error('check_destination', t('@table does not contain index @index in @db_key', array('@table' => $table, '@index' => $name, '@db_key' => $dest)));
+        foreach ($info['fields']  as $name => $column) {
+          if (!db_field_exists($table, $name)) {
+            form_set_error('migrate_destination', t('@table does not contain field @column in @db_key', array(
+              '@table' => $table,
+              '@column' => $name,
+              '@db_key' => $dest
+            )));
           }
-          foreach ($columns as $col) {
-            if (!db_field_exists($table, $col)) {
-              form_set_error('check_destination', t('@table does not contain field @column in @db_key', array('@table' => $table, '@column' => $col, '@db_key' => $dest)));
+        }
+        if (isset($info['indexes'])) {
+          foreach ($info['indexes'] as $name => $columns) {
+            if (!db_index_exists($table, $name)) {
+              form_set_error('migrate_destination', t('@table does not contain index @index in @db_key', array('@table' => $table, '@index' => $name, '@db_key' => $dest)));
+            }
+            foreach ($columns as $col) {
+              if (is_array($col)) {
+                $col = $col[0];
+              }
+              if (!db_field_exists($table, $col)) {
+                throw new Exception(t('Index check failure: @table does not contain field @column in @db_key', array(
+                  '@table' => $table,
+                  '@column' => $col,
+                  '@db_key' => $dest
+                )));
+              }
             }
           }
         }
       }
     }
+    catch (Exception $e) {
+      form_set_error('migrate_destination', $e->getMessage());
+    }
   }
+  db_set_active('default');
 }
 
 /**
