@@ -25,7 +25,7 @@ function dbtng_migrator_batch_initialise_destination($destination) {
 /**
  * Install database schema into destination database.
  */
-function dbtng_migrator_batch_install_schema($origin, $destination) {
+function dbtng_migrator_batch_install_schema($origin, $destination, $table_prefixes) {
   include_once DRUPAL_ROOT . '/includes/install.inc';
 
   // Load install files to expose hook_schema_alter hooks.
@@ -51,6 +51,13 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
 
     foreach ($original_schema_table_list as $name) {
       $table = $schema[$name];
+
+      $table_prefix = Database::getConnection()->tablePrefix($name);
+      if (!in_array($table_prefix, $table_prefixes)) {
+        drupal_set_message(t("@table was skipped since it is not an acceptable table prefix.", array('@table' => $name)));
+        continue;
+      }
+
       db_set_active($destination);
       db_create_table($name, $table);
       $success = db_table_exists($name);
@@ -75,7 +82,7 @@ function dbtng_migrator_batch_install_schema($origin, $destination) {
 /**
  * Migrate data from origin to destination one table at a time.
  */
-function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
+function dbtng_migrator_batch_migrate_table($origin, $destination, $table_prefixes, &$context) {
   if (empty($context['results'])) {
     db_set_active($origin);
     include_once DRUPAL_ROOT . '/includes/install.inc';
@@ -93,7 +100,10 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
         continue;
       }
       foreach ($schema as $table => $info) {
-        $tables[] = $table;
+        $table_prefix = Database::getConnection()->tablePrefix($table);
+        if (in_array($table_prefix, $table_prefixes)) {
+          $tables[] = $table;
+        }
       }
     }
 

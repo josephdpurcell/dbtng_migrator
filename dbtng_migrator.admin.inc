@@ -23,6 +23,7 @@ function dbtng_migrator_check_form($form, &$form_state) {
 function dbtng_migrator_check_form_validate($form, &$form_state) {
   $origin = $form_state['values']['migrate_origin'];
   $dest   = $form_state['values']['migrate_destination'];
+  $table_prefixes = $form_state['values']['migrate_table_prefixes_' . $origin];
 
   // Test connectivity.
   try {
@@ -124,13 +125,22 @@ function dbtng_migrator_check_form_submit($form, &$form_state) {
 function dbtng_migrator_settings($form, &$form_state) {
   $form['description']['#markup'] = t('Below are the database connections defined in Drupal. You can use this interface to migrate database to another assuming it is a Drupal database.');
   global $databases;
+  $table_prefix_map = array();
   foreach (array_keys($databases) as $key) {
+    $key = check_plain($key);
+
     $connection_info = Database::getConnectionInfo($key);
     $info = $connection_info['default'];
 
     // Make the information display safe.
-    $rows[] = array(check_plain($key), check_plain($info['driver']), check_plain($info['database']));
+    $rows[] = array($key, check_plain($info['driver']), check_plain($info['database']));
     $options[$key] = $key;
+
+    $migrate_table_prefix_options_map[$key] = array();
+    foreach ($info['prefix'] as $prefix_key => $prefix_value) {
+      $prefix_value = check_plain($prefix_value);
+      $migrate_table_prefix_options_map[$key][$prefix_value] = $prefix_value;
+    }
   }
 
   if (count($options) < 2) {
@@ -172,6 +182,26 @@ function dbtng_migrator_settings($form, &$form_state) {
     '#description' => t('The database the data will be replicated from.'),
     '#disabled' => count($options) < 2,
   );
+
+  foreach ($migrate_table_prefix_options_map as $database => $migrate_table_prefix_options) {
+    $form['migrate_table_prefixes_' . $database] = array(
+      '#title' => 'Origin Table Prefixes',
+      '#description' => 'You are using table prefixes, please select which ones you want to migrate.',
+      '#type' => 'select',
+      '#multiple' => TRUE,
+      '#required' => TRUE,
+      '#options' => $migrate_table_prefix_options,
+      '#size' => 5,
+      '#default_value' => array_keys($migrate_table_prefix_options),
+      '#states' => array(
+         // Only show this field when the 'toggle_me' checkbox is enabled.
+         'visible' => array(
+           ':input[name="migrate_origin"]' => array('value' => $database),
+	 ),
+      ),
+    );
+  }
+
   $form['migrate_destination'] = array(
     '#title' => 'Destination Database',
     '#type' => 'select',
@@ -180,6 +210,7 @@ function dbtng_migrator_settings($form, &$form_state) {
     '#access' => count($options) > 1,
     '#default_value' => $key,
   );
+
   $form['migrate_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Migrate'),
@@ -199,6 +230,7 @@ function dbtng_migrator_settings_validate($form, $form_state) {
 
   $origin = $form_state['values']['migrate_origin'];
   $dest   = $form_state['values']['migrate_destination'];
+  $table_prefixes = $form_state['values']['migrate_table_prefixes_' . $origin];
 
   // Connect to the origin and generate a list of tables in the database.
   db_set_active($origin);
@@ -218,7 +250,10 @@ function dbtng_migrator_settings_validate($form, $form_state) {
       continue;
     }
     foreach ($schema as $table => $info) {
-      $tables[] = $table;
+      $table_prefix = Database::getConnection()->tablePrefix($table);
+      if (in_array($table_prefix, $table_prefixes)) {
+        $tables[] = $table;
+      }
     }
   }
 
@@ -236,12 +271,16 @@ function dbtng_migrator_settings_validate($form, $form_state) {
  * Submission handler for form dbtng_migrator_settings.
  */
 function dbtng_migrator_settings_submit($form, $form_state) {
+  $origin = $form_state['values']['migrate_origin'];
+  $destination = $form_state['values']['migrate_destination'];
+  $table_prefixes = $form_state['values']['migrate_table_prefixes_' . $origin];
+
   $batch = array(
     'title' => t("Replicating Database"),
     'operations' => array(
-      array('dbtng_migrator_batch_initialise_destination', array($form_state['values']['migrate_destination'])),
-      array('dbtng_migrator_batch_install_schema', array($form_state['values']['migrate_origin'], $form_state['values']['migrate_destination'])),
-      array('dbtng_migrator_batch_migrate_table', array($form_state['values']['migrate_origin'], $form_state['values']['migrate_destination'])),
+      array('dbtng_migrator_batch_initialise_destination', array($destination)),
+      array('dbtng_migrator_batch_install_schema', array($origin, $destination, $table_prefixes)),
+      array('dbtng_migrator_batch_migrate_table', array($origin, $destination, $table_prefixes)),
     ),
     'finished' => 'dbtng_migrator_batch_report',
     'file' => drupal_get_path('module', 'dbtng_migrator') . '/dbtng_migrator.batch.inc',
