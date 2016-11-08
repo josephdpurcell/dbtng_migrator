@@ -172,7 +172,8 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, $table_prefix
   }
   catch(Exception $e) {
     db_set_active('default');
-    drupal_set_message($e->getMessage(), 'error');
+    drupal_set_message(t('Error: %message', array('%message' => $e->getMessage())), 'error');
+    watchdog_exception('dbtng_migrator', $e);
     $context['message'] = t(
       "Processing @table failed (@progress of @total).",
       array(
