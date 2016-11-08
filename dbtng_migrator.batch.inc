@@ -96,6 +96,9 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
         $tables[] = $table;
       }
     }
+
+    natsort($tables);
+
     $context['sandbox']['unprocessed_tables'] = $tables;
     $context['sandbox']['max'] = count($tables);
     $context['sandbox']['progress'] = 0;
@@ -113,13 +116,21 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
     $order_by = current($schema['primary key']);
   }
 
-
   try {
+    $context['sandbox']['progress']++;
+
     // We have to revert to the default database to process a t() function call.
     // Even though its likely $origin is the default database,
     // we can't assume it.
     db_set_active('default');
-    $context['message'] = t("Processing @table successful", array('@table' => $table));
+    $context['message'] = t(
+      "Processing @table successful (@progress of @total).",
+      array(
+        '@table' => $table,
+	'@progress' => $context['sandbox']['progress'],
+	'@total' => $context['sandbox']['max'],
+      )
+    );
     db_set_active($origin);
 
     // Fix this to make work with non-SQL databases.
@@ -152,7 +163,14 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, &$context) {
   catch(Exception $e) {
     db_set_active('default');
     drupal_set_message($e->getMessage(), 'error');
-    $context['message'] = t("Processing @table failed.", array('@table' => $table));
+    $context['message'] = t(
+      "Processing @table failed (@progress of @total).",
+      array(
+        '@table' => $table,
+        '@progress' => $context['sandbox']['progress'],
+        '@total' => $context['sandbox']['max'],
+      )
+    );
   }
   $context['results'][] = $table;
 
