@@ -52,10 +52,15 @@ function dbtng_migrator_batch_install_schema($origin, $destination, $table_prefi
     foreach ($original_schema_table_list as $name) {
       $table = $schema[$name];
 
-      $table_prefix = Database::getConnection()->tablePrefix($name);
-      if (!in_array($table_prefix, $table_prefixes)) {
-        drupal_set_message(t("@table was skipped since it is not an acceptable table prefix.", array('@table' => $name)));
-        continue;
+      // Skip this table if it's not in the list of table prefixes.
+      // Note: assume $table_prefixes being empty means prefixes are not used so
+      // include all tables.
+      if (!empty($table_prefixes)) {
+        $table_prefix = Database::getConnection()->tablePrefix($name);
+        if (!in_array($table_prefix, $table_prefixes)) {
+          drupal_set_message(t("@table was skipped since it is not an acceptable table prefix.", array('@table' => $name)));
+          continue;
+        }
       }
 
       db_set_active($destination);
@@ -99,11 +104,21 @@ function dbtng_migrator_batch_migrate_table($origin, $destination, $table_prefix
       if (!is_array($schema)) {
         continue;
       }
-      foreach ($schema as $table => $info) {
-        $table_prefix = Database::getConnection()->tablePrefix($table);
-        if (in_array($table_prefix, $table_prefixes)) {
-          $tables[] = $table;
+
+      // Remove tables to skip from schema list.
+      // Note: assume $table_prefixes being empty means prefixes are not used so
+      // include all tables.
+      if (!empty($table_prefixes)) {
+        foreach ($schema as $table => $info) {
+          $table_prefix = Database::getConnection()->tablePrefix($table);
+          if (!in_array($table_prefix, $table_prefixes)) {
+            unset($schema[$table]);
+          }
         }
+      }
+
+      foreach ($schema as $table => $info) {
+        $tables[] = $table;
       }
     }
 

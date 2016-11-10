@@ -61,6 +61,18 @@ function dbtng_migrator_check_form_validate($form, &$form_state) {
       continue;
     }
 
+    // Remove tables to skip from schema list.
+    // Note: assume $table_prefixes being empty means prefixes are not used so
+    // include all tables.
+    if (!empty($table_prefixes)) {
+      foreach ($schema as $table => $info) {
+        $table_prefix = Database::getConnection()->tablePrefix($table);
+        if (!in_array($table_prefix, $table_prefixes)) {
+          unset($schema[$table]);
+        }
+      }
+    }
+
     db_set_active($dest);
 
     try {
@@ -249,11 +261,21 @@ function dbtng_migrator_settings_validate($form, $form_state) {
     if (!is_array($schema)) {
       continue;
     }
-    foreach ($schema as $table => $info) {
-      $table_prefix = Database::getConnection()->tablePrefix($table);
-      if (in_array($table_prefix, $table_prefixes)) {
-        $tables[] = $table;
+
+    // Remove tables to skip from schema list.
+    // Note: assume $table_prefixes being empty means prefixes are not used so
+    // include all tables.
+    if (!empty($table_prefixes)) {
+      foreach ($schema as $table => $info) {
+        $table_prefix = Database::getConnection()->tablePrefix($table);
+        if (!in_array($table_prefix, $table_prefixes)) {
+          unset($schema[$table]);
+        }
       }
+    }
+
+    foreach ($schema as $table => $info) {
+      $tables[] = $table;
     }
   }
 
