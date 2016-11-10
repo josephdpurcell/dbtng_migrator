@@ -50,6 +50,8 @@ function dbtng_migrator_check_form_validate($form, &$form_state) {
   // Load install files to expose hook_schema_alter hooks.
   drupal_load_updates();
 
+  $errors = array();
+
   $modules = module_list(TRUE);
   foreach ($modules as $module) {
     db_set_active($origin);
@@ -73,51 +75,90 @@ function dbtng_migrator_check_form_validate($form, &$form_state) {
       }
     }
 
+    // Get expected row counts.
+    $expected_row_counts = [];
+    foreach ($schema as $table => $info) {
+      try {
+        $expected_row_counts[$table] = (int) db_select($table)->countQuery()->execute()->fetchField();
+      }
+      catch (\Exception $e) {
+        $expected_row_counts[$table] = 0;
+        $errors[] = t('Could not get row count for @table on @db_key because of error: @error', array(
+          '@table' => $table,
+          '@db_key' => $origin,
+          '@error' => $e->getMessage(),
+        ));
+      }
+    }
+
     db_set_active($dest);
 
     try {
 
-      // Iterate over the schema and assert the origin's schema exists
-      // on the destination.
+      // Iterate over the schema and assert the origin's schema exists on
+      // the destination and that row counts match.
       foreach ($schema as $table => $info) {
         if (!db_table_exists($table)) {
-          form_set_error('migrate_destination', t('@table does not existing in @db_key', array('@table' => $table, '@db_key' => $dest)));
+          $errors[] = t('@table does not existing in @db_key', array('@table' => $table, '@db_key' => $dest));
           continue;
         }
-        foreach ($info['fields']  as $name => $column) {
+        foreach ($info['fields'] as $name => $column) {
           if (!db_field_exists($table, $name)) {
-            form_set_error('migrate_destination', t('@table does not contain field @column in @db_key', array(
+            $errors[] = t('@table does not contain field @column in @db_key', array(
               '@table' => $table,
               '@column' => $name,
-              '@db_key' => $dest
-            )));
+              '@db_key' => $dest,
+            ));
           }
         }
         if (isset($info['indexes'])) {
           foreach ($info['indexes'] as $name => $columns) {
             if (!db_index_exists($table, $name)) {
-              form_set_error('migrate_destination', t('@table does not contain index @index in @db_key', array('@table' => $table, '@index' => $name, '@db_key' => $dest)));
+              $errors[] = t('@table does not contain index @index in @db_key', array(
+                '@table' => $table,
+                '@index' => $name,
+                '@db_key' => $dest,
+              ));
             }
             foreach ($columns as $col) {
               if (is_array($col)) {
                 $col = $col[0];
               }
               if (!db_field_exists($table, $col)) {
-                throw new Exception(t('Index check failure: @table does not contain field @column in @db_key', array(
+                $errors[] = t('Index check failure: @table does not contain field @column in @db_key', array(
                   '@table' => $table,
                   '@column' => $col,
-                  '@db_key' => $dest
-                )));
+                  '@db_key' => $dest,
+                ));
               }
             }
           }
         }
+        $found_row_count = (int) db_select($table)->countQuery()->execute()->fetchField();
+        if ($expected_row_counts[$table] != $found_row_count) {
+          $errors[] = t('Expected @expected_row_count rows in @table but found @found_row_count in @db_key.', array(
+            '@expected_row_count' => $expected_row_counts[$table],
+            '@found_row_count' => $found_row_count,
+            '@table' => $table,
+            '@db_key' => $dest,
+          ));
+        }
       }
     }
     catch (Exception $e) {
-      form_set_error('migrate_destination', $e->getMessage());
+      $errors[] = $e->getMessage();
     }
   }
+
+  if (count($errors)) {
+    foreach ($errors as $i => $error) {
+      form_set_error('migrate_check_' . $i, $error);
+    }
+  }
+  else {
+    drupal_set_message('The migration completed without any detected flaws.', 'success');
+  }
+
   db_set_active('default');
 }
 
